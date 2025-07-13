@@ -2,7 +2,6 @@ from flask import Flask
 import threading
 import requests
 import time
-import json
 from datetime import datetime, timedelta
 
 app = Flask('')
@@ -21,7 +20,7 @@ def keep_alive():
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1391485113560203345/Ec9hNjJ2ySZoa2xp75XcB8dhWJ-0HnuFKsIbr0c_v10W8c5tx72zhNzg24qLvYpo2W8d"
 
-START_DATETIME = datetime(2025, 7, 8, 14, 0, 0)  # 08.07.2025 16:00 Uhr
+START_DATETIME = datetime(2025, 7, 8, 14, 0, 0)  
 
 EVENT_INTERVAL_DAYS = 4
 
@@ -153,19 +152,6 @@ __**Effekt:**__
     },
 ]
 
-STATE_FILE = "event_state.json"
-
-def load_state():
-    try:
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {}
-
-def save_state(state):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(state, f)
-
 def post_event(event_idx, event_start, event_end):
     event = events[event_idx]
     embed = {
@@ -179,32 +165,34 @@ def post_event(event_idx, event_start, event_end):
 
 def main():
     keep_alive()
-    while True:
-        # --- NEU: immer den aktuellen State und Index laden ---
-        state = load_state()
-        event_idx = state.get("event_idx", 0)
-        last_event_time_str = state.get("last_event_time")
-        if last_event_time_str:
-            last_event_time = datetime.fromisoformat(last_event_time_str)
-        else:
-            last_event_time = START_DATETIME - timedelta(days=EVENT_INTERVAL_DAYS)
+    last_posted_cycle = None
 
+    while True:
         now = datetime.now()
-        next_event_start = last_event_time + timedelta(days=EVENT_INTERVAL_DAYS)
-        if now < next_event_start:
-            to_wait = (next_event_start - now).total_seconds()
-            print(f"Nächstes Event: {events[event_idx]['title']} am {next_event_start}. Warte {to_wait/3600:.1f} Stunden...")
+        if now < START_DATETIME:
+            to_wait = (START_DATETIME - now).total_seconds()
+            print(f"Warte bis zum Startdatum: {START_DATETIME}.")
             time.sleep(max(60, to_wait))
             continue
 
-        next_event_end = next_event_start + timedelta(days=1)
-        print(f"Poste Event {event_idx+1}: {events[event_idx]['title']}")
-        post_event(event_idx, next_event_start, next_event_end)
-        # --- State updaten & speichern ---
-        state["event_idx"] = (event_idx + 1) % len(events)
-        state["last_event_time"] = next_event_start.isoformat()
-        save_state(state)
-        time.sleep(EVENT_INTERVAL_DAYS * 24 * 60 * 60)
+        tage_seit_start = (now - START_DATETIME).days
+        current_cycle = tage_seit_start // EVENT_INTERVAL_DAYS
+        event_idx = current_cycle % len(events)
+
+        event_start = START_DATETIME + timedelta(days=current_cycle * EVENT_INTERVAL_DAYS)
+        event_end = event_start + timedelta(days=1)
+
+        if last_posted_cycle != current_cycle:
+            print(f"Poste Event {event_idx+1}: {events[event_idx]['title']}")
+            post_event(event_idx, event_start, event_end)
+            last_posted_cycle = current_cycle
+        else:
+            print(f"Event {event_idx+1} bereits gepostet. Warte bis zum nächsten Zyklus.")
+
+        # Bis zum nächsten möglichen Event-Start schlafen
+        next_cycle_time = event_start + timedelta(days=EVENT_INTERVAL_DAYS)
+        to_wait = (next_cycle_time - now).total_seconds()
+        time.sleep(max(60, to_wait))
 
 if __name__ == "__main__":
     main()
