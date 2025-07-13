@@ -5,7 +5,6 @@ import time
 import json
 from datetime import datetime, timedelta
 
-# ==== WEB-SERVER FÜR UPTIMEROBOT ====
 app = Flask('')
 
 @app.route('/')
@@ -20,16 +19,12 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# ==== HIER DEIN WEBHOOK-LINK EINTRAGEN ====
 WEBHOOK_URL = "https://discord.com/api/webhooks/1391485113560203345/Ec9hNjJ2ySZoa2xp75XcB8dhWJ-0HnuFKsIbr0c_v10W8c5tx72zhNzg24qLvYpo2W8d"
 
-# ==== STARTZEITPUNKT DES ERSTEN EVENTS (anpassen falls nötig) ====
 START_DATETIME = datetime(2025, 7, 8, 16, 0, 0)  # 08.07.2025 16:00 Uhr
 
-# ==== ANZAHL TAGE PRO EVENT-ZYKLUS ====
 EVENT_INTERVAL_DAYS = 4
 
-# ==== EVENTS: TITEL, TEXT, BILDURL ====
 events = [
     {
         "title": "Sternenglut der Argo",
@@ -184,15 +179,16 @@ def post_event(event_idx, event_start, event_end):
 
 def main():
     keep_alive()
-    state = load_state()
-    event_idx = state.get("event_idx", 0)
-    last_event_time_str = state.get("last_event_time")
-    if last_event_time_str:
-        last_event_time = datetime.fromisoformat(last_event_time_str)
-    else:
-        last_event_time = START_DATETIME - timedelta(days=EVENT_INTERVAL_DAYS)
-
     while True:
+        # --- NEU: immer den aktuellen State und Index laden ---
+        state = load_state()
+        event_idx = state.get("event_idx", 0)
+        last_event_time_str = state.get("last_event_time")
+        if last_event_time_str:
+            last_event_time = datetime.fromisoformat(last_event_time_str)
+        else:
+            last_event_time = START_DATETIME - timedelta(days=EVENT_INTERVAL_DAYS)
+
         now = datetime.now()
         next_event_start = last_event_time + timedelta(days=EVENT_INTERVAL_DAYS)
         if now < next_event_start:
@@ -204,6 +200,7 @@ def main():
         next_event_end = next_event_start + timedelta(days=1)
         print(f"Poste Event {event_idx+1}: {events[event_idx]['title']}")
         post_event(event_idx, next_event_start, next_event_end)
+        # --- State updaten & speichern ---
         state["event_idx"] = (event_idx + 1) % len(events)
         state["last_event_time"] = next_event_start.isoformat()
         save_state(state)
