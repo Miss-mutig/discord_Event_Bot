@@ -21,7 +21,7 @@ def keep_alive():
 
 WEBHOOK_URL = "https://discord.com/api/webhooks/1391485113560203345/Ec9hNjJ2ySZoa2xp75XcB8dhWJ-0HnuFKsIbr0c_v10W8c5tx72zhNzg24qLvYpo2W8d"
 
-START_DATETIME = datetime(2025, 7, 8, 16, 0, 0)  # 08.07.2025 16:00 Uhr
+START_DATETIME = datetime(2025, 7, 8, 14, 0, 0)  # 08.07.2025 16:00 Uhr
 
 EVENT_INTERVAL_DAYS = 4
 
